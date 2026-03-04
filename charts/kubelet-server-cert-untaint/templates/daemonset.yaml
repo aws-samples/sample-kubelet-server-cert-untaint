@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "kubelet-server-cert-untaint.fullname" . }}
+  namespace: kube-system
+  labels:
+    {{- include "kubelet-server-cert-untaint.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kubelet-server-cert-untaint.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubelet-server-cert-untaint.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.nodeAffinity }}
+      affinity:
+        nodeAffinity:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+      containers:
+      - name: kscu
+        args:
+        - -taint-key
+        - {{ .Values.taintKey | quote }}
+        - -check-interval
+        - {{ .Values.checkInterval | quote }}
+        - -v
+        - {{ .Values.logLevel | quote }}
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          privileged: true
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /var/lib/kubelet/pki
+          name: kubelet-pki-dir
+          readOnly: true
+      serviceAccountName: {{ include "kubelet-server-cert-untaint.fullname" . }}
+      terminationGracePeriodSeconds: 6
+      priorityClassName: system-node-critical
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      hostNetwork: false
+      volumes:
+      - hostPath:
+          path: /var/lib/kubelet/pki
+          type: Directory
+        name: kubelet-pki-dir

@@ -1,0 +1,38 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: sample
+spec:
+  disruption:
+    budgets:
+    - nodes: 10%
+    consolidateAfter: 30s
+    consolidationPolicy: WhenEmptyOrUnderutilized
+  template:
+    spec:
+      expireAfter: 336h
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+        - on-demand
+        - spot
+      - key: eks.amazonaws.com/instance-category
+        operator: In
+        values:
+        - c
+        - m
+        - t
+        - r
+      - key: eks.amazonaws.com/instance-generation
+        operator: Gt
+        values:
+        - "3"
+      startupTaints:
+      - key: example.com/kubelet-no-server-cert
+        value: "true"
+        effect: NoExecute

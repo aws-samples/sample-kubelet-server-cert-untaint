@@ -1,0 +1,27 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: gitlab-ci
+spec:
+  disruption:
+    budgets:
+    - nodes: 10%
+    consolidateAfter: 30s
+    consolidationPolicy: WhenEmptyOrUnderutilized
+  template:
+    spec:
+      expireAfter: 336h
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      # use only Intel based instances as QRT does
+      requirements:
+      - key: karpenter.k8s.aws/instance-cpu-manufacturer
+        operator: In
+        values:
+        - intel
+      startupTaints:
+      - key: example.com/kubelet-no-server-cert
+        value: "true"
+        effect: NoExecute
