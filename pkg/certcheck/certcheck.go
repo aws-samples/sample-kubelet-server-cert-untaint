@@ -20,8 +20,8 @@ import (
 	"context"
 	"time"
 
-	"youwalther65/kubelet-server-cert-untaint/pkg/config"
-	"youwalther65/kubelet-server-cert-untaint/pkg/util"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/config"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/util"
 
 	"k8s.io/klog/v2"
 )

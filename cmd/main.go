@@ -23,11 +23,11 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"youwalther65/kubelet-server-cert-untaint/pkg/certcheck"
-	"youwalther65/kubelet-server-cert-untaint/pkg/config"
-	"youwalther65/kubelet-server-cert-untaint/pkg/k8sclient"
-	"youwalther65/kubelet-server-cert-untaint/pkg/taint"
-	"youwalther65/kubelet-server-cert-untaint/pkg/util"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/certcheck"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/config"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/k8sclient"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/taint"
+	"github.com/aws-samples/sample-kubelet-server-cert-untaint/pkg/util"
 )
 
 func main() {

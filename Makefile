@@ -16,8 +16,8 @@
 # Configuration Fixed
 # =============================================================================
 BINARY=kscu
-NAME=kubelet-server-cert-untaint
-PKG=youwalther65/$(NAME)
+NAME=sample-kubelet-server-cert-untaint
+PKG=github.com/aws-samples/$(NAME)
 
 # =============================================================================
 # Configuration Variables

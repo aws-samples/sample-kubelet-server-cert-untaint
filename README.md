@@ -62,9 +62,9 @@ nodeAffinity:
 
 2. Install the chart:
 ```bash
-helm install kubelet-server-cert-untaint \
-  charts/kubelet-server-cert-untaint \
-  -f charts/kubelet-server-cert-untaint/custom-values.yaml \
+helm install sample-kubelet-server-cert-untaint \
+  charts/sample-kubelet-server-cert-untaint \
+  -f charts/sample-kubelet-server-cert-untaint/custom-values.yaml \
   -n kube-system
 ```
 

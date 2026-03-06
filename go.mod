@@ -1,4 +1,4 @@
-module youwalther65/kubelet-server-cert-untaint
+module github.com/aws-samples/sample-kubelet-server-cert-untaint
 
 go 1.25.0
 
