@@ -13,7 +13,9 @@
 # limitations under the License.
 
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26@sha256:c83e68f3ebb6943a2904fa66348867d108119890a2c6a2e6f07b38d0eb6c25c5 AS builder
-WORKDIR /go/src/github.com/youwalther65/kubelet-server-cert-untaint
+ARG PKG
+ENV PKG=${PKG}
+WORKDIR /go/src/${PKG}
 RUN go env -w GOCACHE=/gocache GOMODCACHE=/gomodcache
 COPY go.* .
 ARG GOPROXY
@@ -22,12 +24,13 @@ COPY . .
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION
-ARG PKG
 ARG COMMIT
 ARG DATE
 ARG GOEXPERIMENT
-RUN --mount=type=cache,target=/gomodcache --mount=type=cache,target=/gocache OS=$TARGETOS ARCH=$TARGETARCH make
+RUN --mount=type=cache,target=/gomodcache --mount=type=cache,target=/gocache OS=$TARGETOS ARCH=$TARGETARCH make build
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal@sha256:6621917fc09ad8c935aa5ccc32c933c6dec250deafae54af86e154fcd19f5ed0 as linux-al2023
-COPY --from=builder /go/src/github.com/youwalther65/kubelet-server-cert-untaint/bin/kscu /bin/kscu
+ARG PKG
+ENV PKG=${PKG}
+COPY --from=builder /go/src/${PKG}/bin/kscu /bin/kscu
 ENTRYPOINT ["/bin/kscu"]

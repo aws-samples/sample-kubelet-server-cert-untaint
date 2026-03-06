@@ -6,7 +6,6 @@ require (
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
 	k8s.io/client-go v0.35.1
-	k8s.io/klog/examples v0.0.0-20260224172535-764a9a3e7acf
 	k8s.io/klog/v2 v2.130.1
 )
 
