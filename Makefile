@@ -27,7 +27,7 @@ PKG=github.com/aws-samples/$(NAME)
 # Set IMAGE_REGISTRY to push to a custom registry (e.g., ghcr.io/aws, your-account.dkr.ecr.region.amazonaws.com)
 IMAGE_REGISTRY ?= public.ecr.aws/g3x2k6s4
 IMAGE_REPOSITORY ?= kscu
-IMAGE_TAG ?= 1.5
+IMAGE_TAG ?= 1.6
 
 # Compute IMAGE_URI based on whether registry is set
 ifdef IMAGE_REGISTRY
@@ -39,8 +39,6 @@ endif
 # must match Chart.yaml version !!!
 VERSION ?= 1.1.0
 
-IMAGE ?= public.ecr.aws/g3x2k6s4/kscu
-TAG ?= 1.5
 OSVERSION ?= al2023
 GO ?= go
 OS ?= $(shell $(GO) env GOHOSTOS)
