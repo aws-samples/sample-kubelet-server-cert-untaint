@@ -80,39 +80,31 @@ word-hyphen = $(word $2,$(subst -, ,$1))
 # =============================================================================
 # Help Target
 # =============================================================================
+##@ Help
 
 .PHONY: help
 help: ## Show this help message
-	@echo "Kubelet Server Certificate Untaint (kscu) - Available Targets"
-	@echo ""
-	@echo "Development:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(build|fmt|vet|clean)' | grep -v 'docker-build' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Docker Operations:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(docker-)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Deployment:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(install|install-|uninstall-)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Helm Operations:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(helm-)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Configuration Variables:"
-	@echo "  IMAGE_REGISTRY.        Container registry URL (default: empty, local only)"
-	@echo "  IMAGE_REPOSITORY.      Image repository name (default: eks-node-monitoring-agent)"
-	@echo "  IMAGE_TAG              Image tag (default: latest)"
-	@echo "  HELM_RELEASE           helm release name"
-	@echo "  HELM_RELEASE_NAMESPACE helm release namespace"
-	@echo "  HELM_VALUES_FILE       helm values YAML file"
-	@echo "  HELM_EXTRA_FLAGS       Additional flags for helm commands"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make docker-build IMAGE_REGISTRY=your-account.dkr.ecr.us-west-2.amazonaws.com"
-	@echo "  make docker-build IMAGE_REGISTRY=your-account.dkr.ecr.us-west-2.amazonaws.com IMAGE_TAG=v1.0.0"
-	@echo "  make docker-build IMAGE_REGISTRY=your-account.dkr.ecr.us-west-2.amazonaws.com GOBUILDARGS='-race'"
-	@echo ""
-	@echo "  make deploy install-kscu-helm HELM_VALUES_FILE='your-values-file.yaml'"
-	@echo "  make deploy install-kscu-helm HELM_EXTRA_FLAGS='--set nodeAgent.image.tag=v1.0.0'"
+	@printf "\n\033[1m%s\033[0m\n" "Kubelet Server Certificate Untaint (kscu)"
+	@awk 'BEGIN {FS = ":.*##"; printf "\n\033[1mUsage\033[0m\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m\t%s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@printf "\n\033[1m%s\033[0m\n" "Configuration Variables"
+	@printf "  \033[32m%-25s\033[0m%s\n" "IMAGE_REGISTRY" "Container registry URL (default: empty, local only)"
+	@printf "  \033[32m%-25s\033[0m%s\n" "IMAGE_REPOSITORY" "Image repository name (default: eks-node-monitoring-agent)"
+	@printf "  \033[32m%-25s\033[0m%s\n" "IMAGE_TAG" "Image tag (default: latest)"
+	@printf "  \033[32m%-25s\033[0m%s\n" "HELM_RELEASE" "helm release name"
+	@printf "  \033[32m%-25s\033[0m%s\n" "HELM_RELEASE_NAMESPACE" "helm release namespace"
+	@printf "  \033[32m%-25s\033[0m%s\n" "HELM_VALUES_FILE" "helm values YAML file"
+	@printf "  \033[32m%-25s\033[0m%s\n" "HELM_EXTRA_FLAGS" "Additional flags for helm commands"
+	@printf "\n\033[1m%s\033[0m\n" "Examples"
+	@printf "  make docker-build \033[32m%s\033[0m=%s\n" "IMAGE_REGISTRY" "your-account.dkr.ecr.us-west-2.amazonaws.com"
+	@printf "  make docker-build \033[32m%s\033[0m%s \033[32m%s\033[0m=%s\n" "IMAGE_REGISTRY" "=your-account.dkr.ecr.us-west-2.amazonaws.com" "IMAGE_TAG" "v1.0.0"
+	@printf "\n  make build \033[32m%s\033[0m=%s\n" "GOBUILDARGS" "'-race'"
+	@printf "\n  make deploy install-kscu-helm \033[32m%s\033[0m=%s\n" "HELM_VALUES_FILE" "'your-values-file.yaml'"
+	@printf "  make deploy install-kscu-helm \033[32m%s\033[0m=%s\n\n" "HELM_EXTRA_FLAGS" "'--set nodeAgent.image.tag=v1.0.0'"
+
+# =============================================================================
+# Development Target
+# =============================================================================
+##@ Development
 
 .PHONY: build
 build: mod-tidy fmt vet ## Build Go code
@@ -143,6 +135,7 @@ clean: ## Clean build artifacts
 # =============================================================================
 # Docker Targets
 # =============================================================================
+##@ Docker Operations
 
 .PHONY: docker-build
 docker-build: docker-login all-image-registry push-manifest ## Build and push multi-arch Docker image (requires IMAGE_REGISTRY)
@@ -211,6 +204,7 @@ push-manifest: create-manifest
 # =============================================================================
 # Deployment Target
 # =============================================================================
+##@ Deployment Operations
 
 .PHONY: install-kscu
 install-kscu: ## Deploys RBAC and DaemonSet using kubectl
@@ -264,6 +258,7 @@ endif
 # =============================================================================
 # Helm Targets
 # =============================================================================
+##@ Helm Operations
 
 .PHONY: helm-login
 helm-login:
