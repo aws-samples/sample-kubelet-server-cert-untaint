@@ -64,7 +64,7 @@ CHART_DIR ?= charts/$(NAME)
 CHART_OUTPUT_DIR ?= build/charts
 HELM_RELEASE ?= "$(NAME)
 HELM_RELEASE_NAMESPACE ?= "kube-system"
-HELM_VALUES_FILE = "charts/$(NAME)/sample-values.yaml"
+HELM_VALUES_FILE = "$(CHART_DIR)/sample-values.yaml"
 HELM_REGISTRY ?= $(IMAGE_REGISTRY)
 # Additional helm flags (user can override)
 HELM_EXTRA_FLAGS ?=
@@ -131,6 +131,26 @@ clean: ## Clean build artifacts
 	$(GO) clean ./...
 	rm -rf build/
 	rm -rf bin/
+
+.PHONY: envsubst
+envsubst: ## Substitute placeholders in template files
+	@echo "Substituting placeholders: NAME=$(NAME), VERSION=$(VERSION), IMAGE_REGISTRY=$(IMAGE_REGISTRY), IMAGE_REPOSITORY=$(IMAGE_REPOSITORY), TAG=$(IMAGE_TAG)"
+	@# Rename chart directory if needed
+	@CURRENT_CHART_DIR=$$(find charts -maxdepth 1 -mindepth 1 -type d | head -n 1); \
+	if [ -n "$$CURRENT_CHART_DIR" ] && [ "$$CURRENT_CHART_DIR" != "charts/$(NAME)" ]; then \
+		echo "Renaming chart directory from $$CURRENT_CHART_DIR to charts/$(NAME)"; \
+		mv "$$CURRENT_CHART_DIR" "charts/$(NAME)"; \
+	fi
+	@# Substitute templates
+	export NAME=$(NAME) VERSION=$(VERSION) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
+		envsubst < charts/$(NAME)/Chart.yaml.template > charts/$(NAME)/Chart.yaml
+	export NAME=$(NAME) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
+		envsubst < charts/$(NAME)/values.yaml.template > charts/$(NAME)/values.yaml
+	export NAME=$(NAME) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
+		envsubst < deploy/kubernetes/daemonset.yaml.template > deploy/kubernetes/daemonset.yaml
+	export PKG=$(PKG) && \
+		envsubst < go.mod.template > go.mod
+	@echo "Template substitution complete"
 
 # =============================================================================
 # Docker Targets
@@ -215,13 +235,13 @@ trivy-scan:
 ##@ Deployment Operations
 
 .PHONY: install-kscu
-install-kscu: ## Deploys RBAC and DaemonSet using kubectl
+install-kscu: envsubst ## Deploys RBAC and DaemonSet using kubectl
 	@echo "\tInstalling RBAC and DaemonSet"
 	kubectl apply -f deploy/kubernetes/rbac.yaml
 	kubectl apply -f deploy/kubernetes/daemonset.yaml
 
 .PHONY: install-kscu-helm
-install-kscu-helm: ## Deploys RBAC and DaemonSet using helm
+install-kscu-helm: envsubst ## Deploys RBAC and DaemonSet using helm
 	helm upgrade --install $(HELM_RELEASE)  \
 	charts/kubelet-server-cert-untaint -f $(HELM_VALUES_FILE) -n $(HELM_RELEASE_NAMESPACE)
 
@@ -289,7 +309,7 @@ helm-login:
 	fi
 
 .PHONY: helm-lint
-helm-lint: ## Lint Helm chart for errors
+helm-lint: envsubst ## Lint Helm chart for errors
 	@if command -v helm >/dev/null 2>&1; then \
 		helm lint $(CHART_DIR); \
 	else \
@@ -297,7 +317,7 @@ helm-lint: ## Lint Helm chart for errors
 	fi
 
 .PHONY: helm-template
-helm-template: ## Render Helm chart templates to stdout
+helm-template: envsubst ## Render Helm chart templates to stdout
 	@if command -v helm >/dev/null 2>&1; then \
 		helm template eks-node-monitoring-agent $(CHART_DIR) $(HELM_FLAGS); \
 	else \
@@ -305,7 +325,7 @@ helm-template: ## Render Helm chart templates to stdout
 	fi
 
 .PHONY: helm-package
-helm-package: ## Package Helm chart into .tgz archive
+helm-package: envsubst ## Package Helm chart into .tgz archive
 	@if command -v helm >/dev/null 2>&1; then \
 		$(MAKE) helm-lint; \
 		mkdir -p $(CHART_OUTPUT_DIR); \

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kubelet-server-cert-untaint
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/instance: kubelet-server-cert-untaint
+    app.kubernetes.io/name: kubelet-server-cert-untaint
+    app.kubernetes.io/version: v1.00
+    k8s-app: kubelet-server-cert-untaint
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kubelet-server-cert-untaint
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: kubelet-server-cert-untaint
+        app.kubernetes.io/name: kubelet-server-cert-untaint
+        k8s-app: kubelet-server-cert-untaint
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+                  - key: karpenter.sh/nodepool
+                    operator: In
+                    values:
+                      - sample
+      containers:
+      - name: kscu
+        args:
+        - -taint-key
+        - "example.com/kubelet-no-server-cert"
+        - -v
+        - "4"
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: {{IMAGE_REGISTRY}}/{{IMAGE_REPOSITORY}}:{{TAG}}
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: 10m
+            memory: 80Mi
+          requests:
+            cpu: 10m
+            memory: 80Mi
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          privileged: true
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /var/lib/kubelet/pki
+          name: kubelet-pki-dir
+          readOnly: true
+      serviceAccountName: kubelet-server-cert-untaint
+      terminationGracePeriodSeconds: 6
+      priorityClassName: system-node-critical
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      hostNetwork: false
+      volumes:
+      - hostPath:
+          path: /var/lib/kubelet/pki
+          type: ""
+        name: kubelet-pki-dir

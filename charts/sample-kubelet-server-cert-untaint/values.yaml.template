@@ -1,0 +1,24 @@
+image:
+  repository: "{{IMAGE_REGISTRY}}/{{IMAGE_REPOSITORY}}"
+  tag: "{{TAG}}"
+  pullPolicy: IfNotPresent
+
+taintKey: "example.com/kubelet-no-server-cert"
+checkInterval: 5
+logLevel: 4
+
+resources:
+  limits:
+    cpu: 10m
+    memory: 80Mi
+  requests:
+    cpu: 10m
+    memory: 80Mi
+
+nodeAffinity: {}
+
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
