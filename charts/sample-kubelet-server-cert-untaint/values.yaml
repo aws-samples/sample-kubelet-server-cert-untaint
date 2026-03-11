@@ -1,6 +1,6 @@
 image:
-  repository: "public.ecr.aws/g3x2k6s4/kscu"
-  tag: "1.6"
+  repository: "public.ecr.aws/waltju/kscu"
+  tag: "1.7"
   pullPolicy: IfNotPresent
 
 taintKey: "example.com/kubelet-no-server-cert"
