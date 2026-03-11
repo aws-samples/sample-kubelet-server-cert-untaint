@@ -31,6 +31,8 @@ RUN --mount=type=cache,target=/gomodcache --mount=type=cache,target=/gocache OS=
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal@sha256:0051b1aa8e8023cd02ce41aace90dc05dcc68e9e85e44bb0abe46f25c3b2c962 as linux-al2023
 ARG PKG
+ARG BINARY
 ENV PKG=${PKG}
-COPY --from=builder /go/src/${PKG}/bin/kscu /bin/kscu
-ENTRYPOINT ["/bin/kscu"]
+ENV BINARY=${BINARY}
+COPY --from=builder /go/src/${PKG}/bin/${BINARY} /bin/${BINARY}
+ENTRYPOINT ["/bin/${BINARY}"]

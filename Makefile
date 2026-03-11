@@ -207,6 +207,7 @@ image:
 		--build-arg=GOPROXY=$(GOPROXY) \
 		--build-arg=VERSION=$(VERSION) \
 		--build-arg=PKG=$(PKG) \
+		--build-arg=BINARY=$(BINARY) \
 		$(DOCKER_EXTRA_ARGS) \
 		.
 		
