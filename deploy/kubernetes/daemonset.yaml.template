@@ -44,7 +44,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: {{IMAGE_REGISTRY}}/{{IMAGE_REPOSITORY}}:{{TAG}}
+        image: ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${TAG}
         imagePullPolicy: IfNotPresent
         resources:
           limits:

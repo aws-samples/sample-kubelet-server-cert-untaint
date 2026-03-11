@@ -1,6 +1,6 @@
 image:
-  repository: "{{IMAGE_REGISTRY}}/{{IMAGE_REPOSITORY}}"
-  tag: "{{TAG}}"
+  repository: "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}"
+  tag: "${TAG}"
   pullPolicy: IfNotPresent
 
 taintKey: "example.com/kubelet-no-server-cert"
