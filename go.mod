@@ -1,6 +1,6 @@
 module github.com/aws-samples/sample-kubelet-server-cert-untaint
 
-go 1.25.0
+go 1.26.1
 
 require (
 	k8s.io/api v0.35.1

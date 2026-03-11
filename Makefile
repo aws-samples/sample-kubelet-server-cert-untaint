@@ -138,7 +138,7 @@ clean: ## Clean build artifacts
 ##@ Docker Operations
 
 .PHONY: docker-build
-docker-build: docker-login all-image-registry push-manifest ## Build and push multi-arch Docker image (requires IMAGE_REGISTRY)
+docker-build: docker-login all-image-registry push-manifest trivy-scan ## Build and push multi-arch Docker image (requires IMAGE_REGISTRY)
 
 .PHONY: docker-login
 docker-login:
@@ -200,6 +200,14 @@ create-manifest: all-image-registry
 .PHONY: push-manifest
 push-manifest: create-manifest
 	docker manifest push --purge $(IMAGE_URI)
+
+.PHONY: trivy-scan
+trivy-scan:
+	@if command -v trivy >/dev/null 2>&1; then \
+		trivy image $(IMAGE_URI)-$(OS)-$(ARCH)-$(OSVERSION); \
+	else \
+		echo "trivy not available, skipping trivy-scan"; \
+	fi
 
 # =============================================================================
 # Deployment Target
