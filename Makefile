@@ -134,7 +134,7 @@ clean: ## Clean build artifacts
 
 .PHONY: envsubst
 envsubst: ## Substitute placeholders in template files
-	@echo "Substituting placeholders: NAME=$(NAME), VERSION=$(VERSION), IMAGE_REGISTRY=$(IMAGE_REGISTRY), IMAGE_REPOSITORY=$(IMAGE_REPOSITORY), TAG=$(IMAGE_TAG)"
+	@echo "Substituting placeholders: NAME=$(NAME), VERSION=$(VERSION), IMAGE_REGISTRY=$(IMAGE_REGISTRY), IMAGE_REPOSITORY=$(IMAGE_REPOSITORY), TAG=$(IMAGE_TAG), PKG=$(PKG)"
 	@# Rename chart directory if needed
 	@CURRENT_CHART_DIR=$$(find charts -maxdepth 1 -mindepth 1 -type d | head -n 1); \
 	if [ -n "$$CURRENT_CHART_DIR" ] && [ "$$CURRENT_CHART_DIR" != "charts/$(NAME)" ]; then \
@@ -148,8 +148,8 @@ envsubst: ## Substitute placeholders in template files
 		envsubst < charts/$(NAME)/values.yaml.template > charts/$(NAME)/values.yaml
 	export NAME=$(NAME) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
 		envsubst < deploy/kubernetes/daemonset.yaml.template > deploy/kubernetes/daemonset.yaml
-	export PKG=$(PKG) && \
-		envsubst < go.mod.template > go.mod
+	@# Inline substitution of module line in go.mod
+	@sed -i '' "1s|^module .*|module $(PKG)|" go.mod
 	@echo "Template substitution complete"
 
 # =============================================================================
