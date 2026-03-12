@@ -158,7 +158,7 @@ envsubst: ## Substitute placeholders in template files
 ##@ Docker Operations
 
 .PHONY: docker-build
-docker-build: docker-login all-image-registry push-manifest trivy-scan ## Build and push multi-arch Docker image (requires IMAGE_REGISTRY)
+docker-build: docker-login all-image-registry push-manifest trivy-scan manifest-digest ## Build and push multi-arch Docker image (requires IMAGE_REGISTRY)
 
 .PHONY: docker-login
 docker-login:
@@ -221,6 +221,11 @@ create-manifest: all-image-registry
 .PHONY: push-manifest
 push-manifest: create-manifest
 	docker manifest push --purge $(IMAGE_URI)
+
+.PHONY: manifest-digest
+manifest-digest: ## Get SHA256 digest of the multi-arch manifest
+	@echo "Fetching manifest digest for $(IMAGE_URI)"
+	@docker buildx imagetools inspect $(IMAGE_URI) | awk '/Digest:/ {print $$2}'
 
 .PHONY: trivy-scan
 trivy-scan:
