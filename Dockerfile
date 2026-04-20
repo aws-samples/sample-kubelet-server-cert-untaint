@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26.1@sha256:c7e98cc0fd4dfb71ee7465fee6c9a5f079163307e4bf141b336bb9dae00159a5 AS builder
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26.2 AS builder
 ARG PKG
 ENV PKG=${PKG}
 WORKDIR /go/src/${PKG}
@@ -29,7 +29,7 @@ ARG DATE
 ARG GOEXPERIMENT
 RUN --mount=type=cache,target=/gomodcache --mount=type=cache,target=/gocache OS=$TARGETOS ARCH=$TARGETARCH make build
 
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal@sha256:0051b1aa8e8023cd02ce41aace90dc05dcc68e9e85e44bb0abe46f25c3b2c962 as linux-al2023
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023.11.20260413.0-minimal as linux-al2023
 ARG PKG
 ARG BINARY
 ENV PKG=${PKG}

@@ -5,7 +5,7 @@ podLabels: {}
 
 image:
   repository: "public.ecr.aws/waltju/kscu"
-  tag: "1.7"
+  tag: "1.8"
   pullPolicy: IfNotPresent
 
 taintKey: "example.com/kubelet-no-server-cert"
