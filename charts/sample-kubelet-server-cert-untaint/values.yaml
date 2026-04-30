@@ -5,12 +5,13 @@ podLabels: {}
 
 image:
   repository: "public.ecr.aws/waltju/kscu"
-  tag: "1.8"
+  tag: "1.9"
   pullPolicy: IfNotPresent
 
 taintKey: "example.com/kubelet-no-server-cert"
 checkInterval: 5
 logLevel: 4
+skipCertCheck: false
 
 resources:
   limits:

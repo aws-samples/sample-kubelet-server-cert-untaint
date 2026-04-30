@@ -44,7 +44,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: public.ecr.aws/waltju/kscu:1.7
+        image: public.ecr.aws/waltju/kscu:1.9
         imagePullPolicy: IfNotPresent
         resources:
           limits:
