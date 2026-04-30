@@ -76,8 +76,6 @@ Key Helm parameters:
 - `logLevel`: Verbosity level for logging (default: `4`)
 - `skipCertCheck`: Skip kubelet certificate check (default: false)
 
-Note: With `skipCertCheck` set to `true`, kscu will skip the certificate check and immediately untaints node. That makes it possible to use kscu as a generic untainter. 
-
 ### Using kubectl
 
 Apply the Kubernetes manifests directly:
@@ -93,6 +91,9 @@ Key `kscu` command line parameters:
 - `taint-key"`: The taint key to watch for and remove (default: `example.com/kubelet-no-server-cert`)
 - `check-interval`: Interval in seconds to check for the certificate (default: `5`)
 - `log-level`: Verbosity level for logging (default: `4`)
+- `skip-cert-check`: Skip kubelet certificate check (default: false)
+
+Note: With `skip-cert-check` command line parameter set or Helm parameter `skipCertCheck` set to `true`, `kscu` will skip the certificate check and immediately untaints node. That makes it possible to use `kscu` as a generic untainter. 
 
 ## Testing
 
