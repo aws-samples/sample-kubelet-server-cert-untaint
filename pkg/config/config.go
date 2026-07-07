@@ -28,6 +28,7 @@ const (
 	TaintWatcherDuration           = 30 * time.Second
 	KubeletServerCertCheckDuration = 75 * time.Second
 	DefaultCheckIntervalSec        = 5
+	DefaultStartupJitterSec        = 3
 	DefaultTaintKey                = "example.com/kubelet-no-server-cert"
 	DefaultKubeletCertFile         = "/var/lib/kubelet/pki/kubelet-server-current.pem"
 
@@ -40,6 +41,7 @@ type Config struct {
 	TaintKey       string
 	NodeName       string
 	CheckInterval  time.Duration
+	StartupJitter  time.Duration
 	KubeconfigPath string
 	SkipCertCheck  bool
 }
@@ -50,6 +52,7 @@ var (
 	gitCommit           string
 	buildDate           string
 	checkIntervalSec    int
+	startupJitterSec    int
 )
 
 func Load() *Config {
@@ -59,6 +62,7 @@ func Load() *Config {
 	flag.StringVar(&cfg.TaintKey, "taint-key", os.Getenv(envTaintKey), "The taint key to watch for and remove")
 	flag.StringVar(&cfg.NodeName, "node-name", os.Getenv(envNodeName), "The nodename to watch for and remove the taint from")
 	flag.IntVar(&checkIntervalSec, "check-interval", DefaultCheckIntervalSec, "The interval to check for kubelet certificate")
+	flag.IntVar(&startupJitterSec, "startup-jitter", DefaultStartupJitterSec, "Max random delay in seconds before contacting the apiserver, to spread DaemonSet boot load at scale (0 disables)")
 	flag.StringVar(&cfg.KubeconfigPath, "kubeconfig", "", "absolute path to the kubeconfig file")
 	flag.BoolVar(&cfg.SkipCertCheck, "skip-cert-check", false, "Skip waiting for kubelet server certificate")
 
@@ -77,7 +81,11 @@ func Load() *Config {
 	}
 
 	cfg.CheckInterval = time.Duration(checkIntervalSec) * time.Second
-	klog.V(2).InfoS("Configuration", "node", cfg.NodeName, "taint", cfg.TaintKey, "check-interval", checkIntervalSec, "skip-cert-check", cfg.SkipCertCheck)
+	if startupJitterSec < 0 {
+		startupJitterSec = 0
+	}
+	cfg.StartupJitter = time.Duration(startupJitterSec) * time.Second
+	klog.V(2).InfoS("Configuration", "node", cfg.NodeName, "taint", cfg.TaintKey, "check-interval", checkIntervalSec, "startup-jitter", startupJitterSec, "skip-cert-check", cfg.SkipCertCheck)
 
 	return cfg
 }

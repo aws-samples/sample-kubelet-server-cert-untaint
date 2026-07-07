@@ -19,7 +19,7 @@ package taint
 import (
 	"context"
 	"encoding/json"
-	"sync"
+	"math"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -27,11 +27,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
+
+// perAttemptTimeout bounds each individual Get/Patch round-trip so a single
+// throttled request (apiserver Retry-After / HTTP 429) can never consume the
+// whole removal budget the way a shared context would.
+const perAttemptTimeout = 10 * time.Second
 
 type jsonPatch struct {
 	OP    string `json:"op,omitempty"`
@@ -82,110 +85,81 @@ func hasTaint(n *corev1.Node, taintKey string) bool {
 	return false
 }
 
+// StartWatcher removes taintKey from the single node named nodeName.
+//
+// Removing a taint from one known node is a one-shot operation: Get the node,
+// and if it still carries the taint, Patch it away. We deliberately do NOT use
+// an informer/WatchList here - a heavyweight watch per node at boot is exactly
+// the thundering-herd load that trips apiserver priority-and-fairness
+// throttling, and a single throttled watch can stall long enough to leave the
+// node permanently tainted (and therefore never Initialized under Karpenter).
+//
+// Instead we run a bounded Get->Patch retry loop. Each attempt gets its OWN
+// fresh, short-lived context, so a throttled request fails one cheap attempt
+// rather than poisoning the whole budget. maxWatchDuration is the overall
+// wall-clock budget after which we give up (loudly).
 func StartWatcher(clientset *kubernetes.Clientset, nodeName, taintKey string, maxWatchDuration time.Duration) {
-	klog.V(2).InfoS("startNotReadyTaintWatcher - creating short-lived node informer", "node", nodeName, "maxWatchDuration", maxWatchDuration.String())
+	klog.V(2).InfoS("Starting taint removal loop", "node", nodeName, "taint", taintKey, "budget", maxWatchDuration.String())
 
-	factory := informers.NewSharedInformerFactoryWithOptions(
-		clientset,
-		5*time.Second,
-		informers.WithTweakListOptions(func(lo *metav1.ListOptions) {
-			lo.FieldSelector = "metadata.name=" + nodeName
-		}),
-	)
-	informer := factory.Core().V1().Nodes().Informer()
+	deadline := time.Now().Add(maxWatchDuration)
+	backoff := wait.Backoff{
+		Duration: 1 * time.Second,
+		Factor:   1.5,
+		Jitter:   0.2,
+		Steps:    math.MaxInt32, // bounded by the wall-clock deadline below, not by step count
+		Cap:      10 * time.Second,
+	}
 
-	var mutex sync.Mutex
-	ctx, cancel := context.WithTimeout(context.Background(), maxWatchDuration+10*time.Second)
+	for attempt := 1; ; attempt++ {
+		removed, done := attemptTaintRemoval(clientset, nodeName, taintKey, attempt)
+		if done {
+			if removed {
+				klog.V(2).InfoS("Taint removed", "node", nodeName, "taint", taintKey, "attempts", attempt)
+			} else {
+				klog.V(2).InfoS("Node has no taint, nothing to do", "node", nodeName, "taint", taintKey, "attempts", attempt)
+			}
+			return
+		}
+
+		delay := backoff.Step()
+		if time.Now().Add(delay).After(deadline) {
+			klog.ErrorS(nil, "Gave up removing taint within budget - NODE REMAINS TAINTED", "node", nodeName, "taint", taintKey, "budget", maxWatchDuration.String(), "attempts", attempt)
+			return
+		}
+		klog.V(4).InfoS("Taint removal attempt failed, backing off", "node", nodeName, "attempt", attempt, "retryIn", delay.String())
+		time.Sleep(delay)
+	}
+}
+
+// attemptTaintRemoval performs one Get (+ optional Patch) round-trip on its own
+// fresh context. It returns (removed, done):
+//   - done=true  means no further work is needed (taint gone or successfully removed).
+//   - done=false means this attempt failed and the caller should retry.
+//   - removed indicates whether this run actually patched the taint away.
+func attemptTaintRemoval(clientset *kubernetes.Clientset, nodeName, taintKey string, attempt int) (removed, done bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), perAttemptTimeout)
 	defer cancel()
 
-	attemptTaintRemoval := func(n *corev1.Node) {
-		if !hasTaint(n, taintKey) {
-			klog.V(4).InfoS("Node has no taint, do nothing", "node", nodeName, "taint", taintKey)
-			return
-		}
-
-		klog.V(4).InfoS("Node has taint, remove taint", "node", nodeName, "taint", taintKey)
-
-		if !mutex.TryLock() {
-			return
-		}
-		defer mutex.Unlock()
-
-		backoff := wait.Backoff{Duration: 2 * time.Second, Factor: 1.5, Steps: 5}
-		err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
-			if err := remove(ctx, clientset, n, taintKey); err != nil {
-				if apierrors.IsBadRequest(err) || apierrors.IsInvalid(err) || apierrors.IsNotFound(err) {
-					freshNode, nodeErr := clientset.CoreV1().Nodes().Get(ctx, n.Name, metav1.GetOptions{})
-					if nodeErr != nil {
-						klog.ErrorS(nodeErr, "Failed to update potentially stale node", "node", n.Name)
-						return false, nil
-					}
-					if !hasTaint(freshNode, taintKey) {
-						return true, nil
-					}
-					n = freshNode
-				}
-				klog.ErrorS(err, "Failed to remove taint, retrying", "node", n.Name, "error", err)
-				return false, nil
-			}
-			return true, nil
-		})
-
-		if err != nil {
-			klog.ErrorS(err, "Timed out removing taint", "node", n.Name)
-		}
-	}
-
-	if _, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			if n, ok := obj.(*corev1.Node); ok {
-				attemptTaintRemoval(n)
-			}
-		},
-		UpdateFunc: func(_, newObj any) {
-			if n, ok := newObj.(*corev1.Node); ok {
-				attemptTaintRemoval(n)
-			}
-		},
-	}); err != nil {
-		klog.ErrorS(err, "Taint‑watcher: Failed to add event handler")
-		return
-	}
-
-	if err := informer.SetWatchErrorHandlerWithContext(func(handlerCtx context.Context, r *cache.Reflector, err error) {
-		if apierrors.IsUnauthorized(err) || apierrors.IsForbidden(err) {
-			klog.V(8).InfoS("Taint-watcher: permission error, silently cancelling context")
-			cancel()
-		} else {
-			cache.DefaultWatchErrorHandler(handlerCtx, r, err)
-		}
-	}); err != nil {
-		klog.ErrorS(err, "Taint‑watcher: Failed to add error handler")
-		return
-	}
-
-	factory.Start(ctx.Done())
-	if ok := cache.WaitForCacheSync(ctx.Done(), informer.HasSynced); !ok {
-		if ctx.Err() != nil {
-			klog.V(8).InfoS("Taint-watcher: cache sync cancelled (likely permissions error)")
-		} else {
-			klog.ErrorS(nil, "Taint-watcher: cache sync failed")
-		}
-	} else {
-		if obj, exists, err := informer.GetStore().GetByKey(nodeName); err == nil && exists {
-			if n, ok := obj.(*corev1.Node); ok {
-				attemptTaintRemoval(n)
-			}
-		}
-
-		<-time.After(maxWatchDuration)
-		klog.V(8).InfoS("Taint-watcher: timeout reached; stopping")
-	}
-
-	lastChanceNode, err := clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	node, err := clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
-		klog.ErrorS(err, "Failed to get node for last chance taint removal", "node", nodeName)
-	} else {
-		attemptTaintRemoval(lastChanceNode)
+		klog.ErrorS(err, "Failed to get node", "node", nodeName, "attempt", attempt)
+		return false, false
 	}
+
+	if !hasTaint(node, taintKey) {
+		return false, true
+	}
+
+	klog.V(4).InfoS("Node has taint, removing", "node", nodeName, "taint", taintKey, "attempt", attempt)
+	if err := remove(ctx, clientset, node, taintKey); err != nil {
+		// A stale-node conflict (the JSON-Patch "test" op failed, or the node
+		// changed under us) is expected and simply retried with a fresh Get.
+		if apierrors.IsConflict(err) || apierrors.IsBadRequest(err) || apierrors.IsInvalid(err) {
+			klog.V(4).InfoS("Node changed during patch, will re-get and retry", "node", nodeName, "attempt", attempt)
+		} else {
+			klog.ErrorS(err, "Failed to remove taint", "node", nodeName, "attempt", attempt)
+		}
+		return false, false
+	}
+	return true, true
 }
