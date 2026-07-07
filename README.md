@@ -73,6 +73,7 @@ helm install sample-kubelet-server-cert-untaint \
 Key Helm parameters:
 - `taintKey`: The taint key to watch for and remove (default: `example.com/kubelet-no-server-cert`)
 - `checkInterval`: Interval in seconds to check for the certificate (default: `5`)
+- `startupJitter`: Max random delay in seconds before each pod contacts the apiserver, spreading DaemonSet boot load at scale to avoid throttling; `0` disables (default: `3`)
 - `logLevel`: Verbosity level for logging (default: `4`)
 - `skipCertCheck`: Skip kubelet certificate check (default: false)
 
@@ -90,6 +91,7 @@ The manifests work together with a NodePool `sample` from above.
 Key `kscu` command line parameters:
 - `taint-key"`: The taint key to watch for and remove (default: `example.com/kubelet-no-server-cert`)
 - `check-interval`: Interval in seconds to check for the certificate (default: `5`)
+- `startup-jitter`: Max random delay in seconds before contacting the apiserver, spreading DaemonSet boot load at scale to avoid throttling; `0` disables (default: `3`)
 - `log-level`: Verbosity level for logging (default: `4`)
 - `skip-cert-check`: Skip kubelet certificate check (default: false)
 
@@ -111,48 +113,26 @@ and check the logs of the DaemonSet pod `kubelet-no-server-cert` created on the 
 
 It should look like:
 ```bash
-$ kubectl logs -n kube-system kubelet-server-cert-untaint-<redacted> -f
-I0302 16:14:28.696802       1 config.go:50] "Starting taint remover" Version="1.1" GitCommit="034db65d82226d06125cecb536fd84fe4edb186d" BuildDate="2026-03-02T14:25:30+00:00"
-I0302 16:14:28.696893       1 config.go:63] "Configuration" node="i-<redacted>" taint="example.com/kubelet-no-server-cert" check-interval=5
-I0302 16:14:28.697078       1 envvar.go:172] "Feature gate default state" feature="InOrderInformers" enabled=true
-I0302 16:14:28.697089       1 envvar.go:172] "Feature gate default state" feature="InOrderInformersBatchProcess" enabled=true
-I0302 16:14:28.697092       1 envvar.go:172] "Feature gate default state" feature="InformerResourceVersion" enabled=true
-I0302 16:14:28.697095       1 envvar.go:172] "Feature gate default state" feature="WatchListClient" enabled=true
-I0302 16:14:28.697098       1 envvar.go:172] "Feature gate default state" feature="ClientsAllowCBOR" enabled=false
-I0302 16:14:28.697100       1 envvar.go:172] "Feature gate default state" feature="ClientsPreferCBOR" enabled=false
-I0302 16:14:28.697303       1 client.go:23] "Connected to K8s cluster"
-I0302 16:14:28.697324       1 certcheck.go:17] "Check kubelet server certificate" interval="5s"
-I0302 16:14:29.697523       1 certcheck.go:29] "Still no kubelet server certificate - re-trying" check=1 elapsed="1.000185211s"
-I0302 16:14:34.697938       1 certcheck.go:29] "Still no kubelet server certificate - re-trying" check=2 elapsed="6.000600196s"
-I0302 16:14:39.698145       1 certcheck.go:26] "kubelet server certificate exists" check=3 elapsed="11.000806321s"
-I0302 16:14:39.698187       1 main.go:50] "Running taint removal now" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:39.698196       1 taint.go:70] "startNotReadyTaintWatcher - creating short-lived node informer" node="i-<redacted>" maxWatchDuration="30s"
-I0302 16:14:39.698456       1 reflector.go:367] "Starting reflector" type="*v1.Node" resyncPeriod="5s" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:39.698468       1 reflector.go:411] "Listing and watching" type="*v1.Node" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:39.797317       1 reflector.go:978] "Exiting watch because received the bookmark that marks the end of initial events stream" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289" totalItems=2 duration="98.815644ms"
-I0302 16:14:39.797353       1 reflector.go:446] "Caches populated" type="*v1.Node" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:39.797416       1 taint.go:91] "Node has taint, remove taint" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:39.797458       1 taint.go:33] "Queued taint for removal" key="example.com/kubelet-no-server-cert" effect="NoExecute"
-I0302 16:14:39.798934       1 taint.go:91] "Node has taint, remove taint" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:39.813660       1 taint.go:56] "Removed taint from local node" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:39.814432       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:39.844419       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:44.798265       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:44.798345       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:49.265739       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:49.798903       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:49.798990       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:54.803081       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:54.803145       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:14:59.805007       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:14:59.805089       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:15:04.807665       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:15:04.807733       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:15:09.826720       1 reflector.go:466] "Forcing resync" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
-I0302 16:15:09.826789       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:15:09.926473       1 taint.go:87] "Node has no taint, do nothing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
-I0302 16:15:09.926511       1 main.go:54] "No more work to done - sleep forever now"
-I0302 16:15:09.926584       1 reflector.go:373] "Stopping reflector" type="*v1.Node" resyncPeriod="5s" reflector="/gomodcache/k8s.io/client-go@v0.35.1/tools/cache/reflector.go:289"
+$ kubectl logs -n kube-system kubelet-server-cert-untaint-<redacted>
+I0707 09:30:17.157817       1 config.go:71] "Starting taint remover" Version="1.1.0" GitCommit="0346747c0b84f314ccc0e7042a7b3e9852825e96" BuildDate="2026-07-07T08:58:05+00:00"
+I0707 09:30:17.157906       1 config.go:88] "Configuration" node="i-<redacted>" taint="example.com/kubelet-no-server-cert" check-interval=5 startup-jitter=3 skip-cert-check=false
+I0707 09:30:17.752291       1 util.go:45] "Applying startup jitter before contacting apiserver" delay="976.633554ms" max="3s"
+I0707 09:30:18.729447       1 envvar.go:172] "Feature gate default state" feature="InOrderInformersBatchProcess" enabled=true
+I0707 09:30:18.729481       1 envvar.go:172] "Feature gate default state" feature="InformerResourceVersion" enabled=true
+I0707 09:30:18.729487       1 envvar.go:172] "Feature gate default state" feature="WatchListClient" enabled=true
+I0707 09:30:18.729491       1 envvar.go:172] "Feature gate default state" feature="ClientsAllowCBOR" enabled=false
+I0707 09:30:18.729495       1 envvar.go:172] "Feature gate default state" feature="ClientsPreferCBOR" enabled=false
+I0707 09:30:18.729499       1 envvar.go:172] "Feature gate default state" feature="InOrderInformers" enabled=true
+I0707 09:30:18.729641       1 client.go:39] "Connected to K8s cluster"
+I0707 09:30:18.729671       1 certcheck.go:33] "Check kubelet server certificate" interval="5s"
+I0707 09:30:19.729844       1 certcheck.go:42] "kubelet server certificate exists" check=1 elapsed="1.00016154s"
+I0707 09:30:19.729871       1 main.go:57] "Running taint removal now" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
+I0707 09:30:19.729881       1 taint.go:102] "Starting taint removal loop" node="i-<redacted>" taint="example.com/kubelet-no-server-cert" budget="30s"
+I0707 09:30:19.740562       1 taint.go:153] "Node has taint, removing" node="i-<redacted>" taint="example.com/kubelet-no-server-cert" attempt=1
+I0707 09:30:19.740783       1 taint.go:52] "Queued taint for removal" key="example.com/kubelet-no-server-cert" effect="NoExecute"
+I0707 09:30:19.773332       1 taint.go:75] "Removed taint from local node" node="i-<redacted>" taint="example.com/kubelet-no-server-cert"
+I0707 09:30:19.773362       1 taint.go:117] "Taint removed" node="i-<redacted>" taint="example.com/kubelet-no-server-cert" attempts=1
+I0707 09:30:19.773370       1 main.go:61] "No more work to be done - sleeping forever now"
 ```
 
 ## Building

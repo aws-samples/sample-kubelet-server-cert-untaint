@@ -18,6 +18,7 @@ package util
 
 import (
 	"errors"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,6 +30,20 @@ import (
 func FileExists(file string) bool {
 	_, err := os.Stat(file)
 	return !errors.Is(err, os.ErrNotExist)
+}
+
+// SleepJitter sleeps for a random duration in [0, max) before returning. In a
+// DaemonSet, every pod starts at roughly the same instant during a scale-up,
+// so without jitter N pods hit the apiserver in lockstep and trip
+// priority-and-fairness throttling (HTTP 429). Spreading the first request over
+// a small random window flattens that boot spike. A non-positive max is a no-op.
+func SleepJitter(max time.Duration) {
+	if max <= 0 {
+		return
+	}
+	delay := time.Duration(rand.Int63n(int64(max)))
+	klog.V(2).InfoS("Applying startup jitter before contacting apiserver", "delay", delay.String(), "max", max.String())
+	time.Sleep(delay)
 }
 
 func SetupSignalHandler() {

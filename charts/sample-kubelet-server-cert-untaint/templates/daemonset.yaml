@@ -29,6 +29,8 @@ spec:
         - {{ .Values.taintKey | quote }}
         - -check-interval
         - {{ .Values.checkInterval | quote }}
+        - -startup-jitter
+        - {{ .Values.startupJitter | quote }}
         - -v
         - {{ .Values.logLevel | quote }}
         {{- if .Values.skipCertCheck }}

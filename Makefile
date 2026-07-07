@@ -27,7 +27,7 @@ PKG=github.com/aws-samples/$(NAME)
 # Set IMAGE_REGISTRY to push to a custom registry (e.g., ghcr.io/aws, your-account.dkr.ecr.region.amazonaws.com)
 IMAGE_REGISTRY ?= public.ecr.aws/waltju
 IMAGE_REPOSITORY ?= kscu
-IMAGE_TAG ?= 1.9
+IMAGE_TAG ?= 2.1
 
 # Compute IMAGE_URI based on whether registry is set
 ifdef IMAGE_REGISTRY
@@ -35,6 +35,12 @@ ifdef IMAGE_REGISTRY
 else
     IMAGE_URI ?= $(IMAGE_REPOSITORY):$(IMAGE_TAG)
 endif
+
+# Trivy scan configuration (used by the standalone `trivy` target)
+# TRIVY_IMAGE defaults to the multi-arch manifest; override to scan any image.
+TRIVY_IMAGE ?= $(IMAGE_URI)
+TRIVY_SEVERITY ?= HIGH,CRITICAL
+TRIVY_EXTRA_FLAGS ?=
 
 # must match Chart.yaml version !!!
 VERSION ?= 1.1.0
@@ -108,7 +114,7 @@ help: ## Show this help message
 
 .PHONY: build
 build: mod-tidy fmt vet ## Build Go code
-	GO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -mod=readonly -ldflags ${LDFLAGS} -o bin/$(BINARY) ./cmd/
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -mod=readonly -ldflags ${LDFLAGS} -o bin/$(BINARY) ./cmd/
 
 .PHONY: mod-tidy
 mod-tidy: ## Tidy Go modules
@@ -124,7 +130,7 @@ vet: ## Run go vet
 
 .PHONY: run
 run: ## Run Go code locally
-	GO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GO) run ./cmd/main.go -node-name $(NODE_NAME) -v $(LOG_LEVEL)
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GO) run ./cmd/main.go -node-name $(NODE_NAME) -v $(LOG_LEVEL)
 
 .PHONY: clean
 clean: ## Clean build artifacts
@@ -234,6 +240,16 @@ trivy-scan:
 	else \
 		echo "trivy not available, skipping trivy-scan"; \
 	fi
+
+.PHONY: trivy
+trivy: ## Scan an image for vulnerabilities (default: the multi-arch manifest $(IMAGE_URI))
+	@hash -r 2>/dev/null || true
+	@if ! command -v trivy >/dev/null 2>&1; then \
+		echo "Error: trivy not found on PATH. Install it: https://trivy.dev/latest/getting-started/installation/"; \
+		exit 1; \
+	fi
+	@echo "Scanning $(TRIVY_IMAGE) (severity: $(TRIVY_SEVERITY))"
+	trivy image --severity $(TRIVY_SEVERITY) $(TRIVY_EXTRA_FLAGS) $(TRIVY_IMAGE)
 
 # =============================================================================
 # Deployment Target

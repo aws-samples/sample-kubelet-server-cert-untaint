@@ -34,6 +34,11 @@ func main() {
 	cfg := config.Load()
 	util.SetupSignalHandler()
 
+	// Spread the boot-time apiserver load across the DaemonSet before any API
+	// call, so N nodes scaling up together don't hit the control plane in
+	// lockstep and trigger throttling.
+	util.SleepJitter(cfg.StartupJitter)
+
 	clientSet, err := k8sclient.NewClientset(cfg.KubeconfigPath)
 	if err != nil {
 		klog.ErrorS(err, "Failed to create clientset from the given config")
@@ -53,7 +58,7 @@ func main() {
 		taint.StartWatcher(clientSet, cfg.NodeName, cfg.TaintKey, config.TaintWatcherDuration)
 	}
 
-	klog.V(2).InfoS("No more work to done - sleep forever now")
+	klog.V(2).InfoS("No more work to be done - sleeping forever now")
 	klog.Flush()
 
 	const maxDuration time.Duration = 1<<63 - 1
