@@ -154,8 +154,10 @@ envsubst: ## Substitute placeholders in template files
 		envsubst < charts/$(NAME)/values.yaml.template > charts/$(NAME)/values.yaml
 	export NAME=$(NAME) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
 		envsubst < deploy/kubernetes/daemonset.yaml.template > deploy/kubernetes/daemonset.yaml
-	@# Inline substitution of module line in go.mod
-	@sed -i '' "1s|^module .*|module $(PKG)|" go.mod
+	@# Inline substitution of module line in go.mod.
+	@# Use the attached-suffix form (-i.bak) so this works with both BSD/macOS
+	@# sed and GNU/Linux sed, then drop the backup.
+	@sed -i.bak "1s|^module .*|module $(PKG)|" go.mod && rm -f go.mod.bak
 	@echo "Template substitution complete"
 
 # =============================================================================
