@@ -27,7 +27,7 @@ PKG=github.com/aws-samples/$(NAME)
 # Set IMAGE_REGISTRY to push to a custom registry (e.g., ghcr.io/aws, your-account.dkr.ecr.region.amazonaws.com)
 IMAGE_REGISTRY ?= public.ecr.aws/waltju
 IMAGE_REPOSITORY ?= kscu
-IMAGE_TAG ?= 2.4
+IMAGE_TAG ?= 2.5
 
 # Compute IMAGE_URI based on whether registry is set
 ifdef IMAGE_REGISTRY
@@ -43,7 +43,7 @@ TRIVY_SEVERITY ?= HIGH,CRITICAL
 TRIVY_EXTRA_FLAGS ?=
 
 # must match Chart.yaml version !!!
-VERSION ?= 1.2.0
+VERSION ?= 1.2.1
 
 OSVERSION ?= al2023
 GO ?= go
@@ -154,8 +154,10 @@ envsubst: ## Substitute placeholders in template files
 		envsubst < charts/$(NAME)/values.yaml.template > charts/$(NAME)/values.yaml
 	export NAME=$(NAME) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) TAG=$(IMAGE_TAG) && \
 		envsubst < deploy/kubernetes/daemonset.yaml.template > deploy/kubernetes/daemonset.yaml
-	@# Inline substitution of module line in go.mod
-	@sed -i '' "1s|^module .*|module $(PKG)|" go.mod
+	@# Inline substitution of module line in go.mod.
+	@# Use the attached-suffix form (-i.bak) so this works with both BSD/macOS
+	@# sed and GNU/Linux sed, then drop the backup.
+	@sed -i.bak "1s|^module .*|module $(PKG)|" go.mod && rm -f go.mod.bak
 	@echo "Template substitution complete"
 
 # =============================================================================
