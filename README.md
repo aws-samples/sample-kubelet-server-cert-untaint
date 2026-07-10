@@ -151,6 +151,10 @@ Multi-platform build of container images and manifest file:
 make docker-build
 ```
 
+## Disclaimer
+
+This is sample code provided for educational and demonstration purposes only. See [DISCLAIMER.md](DISCLAIMER.md) — use at your own risk; AWS is not responsible for any damages, data loss, or costs arising from its use.
+
 ## License
 
 Licensed under the Apache License, Version 2.0.
